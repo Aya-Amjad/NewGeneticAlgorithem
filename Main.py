@@ -2,10 +2,13 @@ from Data import Data
 from GeneticAlgorithm import POPULATION_SIZE, GeneticAlgorithm
 from Population import Population
 from Print import print_available_data, print_current_population, print_stats
-
+from constants import MEETING_TIMES
 
 def main():
-    data = Data()
+    # يجب استخدام معلومات اتصال بقاعدة البيانات الخاصة بك
+    db_url = "postgresql://postgres:123456789@localhost:5432/DB"
+
+    data = Data(db_url)
     print_available_data(data)
 
     generation_number = 0
@@ -15,7 +18,7 @@ def main():
     population.get_schedules().sort(key=lambda x: x.get_fitness(), reverse=True)
     print_current_population(population, generation_number)
 
-    geneticAlgorithm = GeneticAlgorithm(data)
+    geneticAlgorithm = GeneticAlgorithm(MEETING_TIMES)
 
     while population.get_schedules()[0].get_fitness() != 1.0:
         generation_number += 1

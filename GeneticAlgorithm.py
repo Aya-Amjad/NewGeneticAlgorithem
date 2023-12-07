@@ -1,5 +1,7 @@
-import random as rnd
 
+import random as rnd
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.orm import sessionmaker
 from Population import Population
 from Schedule import Schedule
 
@@ -8,10 +10,35 @@ TOURNAMENT_SELECTION_SIZE = 3
 MUTATION_RATE = 0.2
 POPULATION_SIZE = 10
 
+# تعريف كلاس الكورس
+class Course:
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
+class Docent:
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
 
+class Room:
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
+
+
+# تعريف الكلاس الخاص بالخوارزمية الجينية
 class GeneticAlgorithm:
-    def __init__(self, data):
+    def __init__(self, data, meeting_times):
         self._data = data
+        self._meeting_times = meeting_times
+        self._load_courses_from_db()
+
+    def _load_courses_from_db(self):
+        # قم بتغيير 'your_username' و 'your_password' و 'localhost:5432' و 'your_database' بمعلومات PostgreSQL الخاصة بك.
+        engine = create_engine('postgresql://postgres:123456789@localhost:5432/DB')
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        self._courses = session.query(Course).all()
 
     def evolve(self, population):
         return self._mutate_population(self._crossover_population(population))
