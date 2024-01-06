@@ -1,36 +1,142 @@
-from sqlalchemy import create_engine, Column, String, Integer, MetaData, Boolean, ForeignKey
+from sqlalchemy import create_engine, Column, String, Integer, MetaData, Boolean, ForeignKey,BIGINT,CHAR
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
-from MeetingTime import MeetingTime
+from constants import TIMES
+from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+class ProfessorCourseAssociation(Base):
+    __tablename__ = 'mydatabase_course_professors'
+    id = Column(BIGINT, primary_key=True)
+    professor_id = Column(BIGINT, ForeignKey('mydatabase_professor.id'))
+    course_id = Column(BIGINT, ForeignKey('mydatabase_course.id'))
 
-
+class ScheduleTable(Base):
+    __tablename__ = 'schedule'
+    id = Column(Integer, primary_key=True)
+    doctor_name = Column(String)  # استخدم String بدلاً من Integer إذا كان اسم الطبيب هو نص
+    course_name = Column(String)  # استخدم String بدلاً من Integer إذا كان اسم الدورة هو نص
+    room_number = Column(String)  # استخدم String بدلاً من Integer إذا كان رقم الغرفة هو نص
+    time_slot = Column(String)
+    day = Column(String)
+    
 class Docent(Base):
     __tablename__ = 'mydatabase_professor'
-    id = Column(String, primary_key=True)
-    name = Column(String)  # يجب أن يكون هنا
+    id = Column(BIGINT, primary_key=True)
+    id_number = Column(BIGINT)
+    name = Column(CHAR)
     min_hours = Column(Integer)
     max_hours = Column(Integer)
+    courses = relationship("Course", secondary="mydatabase_course_professors", back_populates="professors")   
+    def __init__(self, id, name, min_hours, max_hours, assigned_hours=None, assigned_course_hours=None):
+        self.id = id
+        self.name = name
+        self.min_hours = min_hours
+        self.max_hours = max_hours
+        self._assigned_hours = 0  
+        self._assigned_course_hours = 0 
+    @property
+    def assigned_hours(self):
+        return getattr(self, '_assigned_hours', 0)
+    @assigned_hours.setter
+    def assigned_hours(self, value):
+        self._assigned_hours = value
+    @property
+    def assigned_course_hours(self):
+        return getattr(self, '_assigned_course_hours', 0)
+    @assigned_course_hours.setter
+    def assigned_course_hours(self, value):
+        self._assigned_course_hours = value
+    def get_assigned_hours(self):
+        return self.assigned_hours
+    def get_id(self):
+        return self.id
+    def get_name(self):
+        return self.name
+    def get_min_hours(self):
+        return self.min_hours
+    def get_max_hours(self):
+        return self.max_hours
+    def is_available(self, meeting_time, course_hours):
+        return self.assigned_hours + course_hours <= self.max_hours            
+    def add_assigned_hours(self, hours):
+        self.assigned_hours += hours
+    def reduce_assigned_hours(self, hours):
+        self.assigned_hours -= hours
+    def add_assigned_course_hours(self, hours):
+        self.assigned_course_hours += hours
+    def __str__(self):
+        return f" Name: {self.name}"
+   
+
 class Course(Base):
     __tablename__ = 'mydatabase_course'
-    code = Column(Integer, primary_key=True)
-    name = Column(String)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String)
+    name = Column(String)  
     number_of_students = Column(Integer)
     number_of_hours = Column(Integer)
     max_students_per_room = Column(Integer)
     requires_projector = Column(Boolean)
+    professors = relationship("Docent", secondary="mydatabase_course_professors", back_populates="courses")
+    def __init__(self, code, name, number_of_students, number_of_hours, max_students_per_room, requires_projector):
+        self.code = code
+        self.name = name
+        self.number_of_students = number_of_students
+        self.number_of_hours = number_of_hours
+        self.max_students_per_room = max_students_per_room
+        self.requires_projector = requires_projector
+    def get_number(self):
+        return self.code
+    def get_max_students_per_room(self):
+        return self.max_students_per_room
+    def get_name(self):
+        return self.name
+    def get_docents(self):
+        return self.professors 
+    def get_number_of_students(self):
+        return self.number_of_students
+    def get_number_of_hours(self):
+        return self.number_of_hours
+    def set_number_of_students(self, new_number_of_students):
+        self.number_of_students = new_number_of_students
+    def get_requires_projector(self):
+        return self.requires_projector
+    def __str__(self):
+        return f"{self.name} ({self.requires_projector})"
 
 class Room(Base):
-   __tablename__ = 'mydatabase_room'
-   room_number = Column(String, primary_key=True)
-   capacity = Column(Integer)  # يجب أن يكون هنا
-   room_type = Column(String)
-   has_projector = Column(Boolean)
+    __tablename__ = 'mydatabase_room'
+    id = Column(Integer, primary_key=True)
+    room_number = Column(String)
+    capacity = Column(Integer)
+    room_type = Column(Integer) 
+    has_projector = Column(Boolean)
+    def __init__(self, room_number, capacity, room_type, has_projector):
+        self.room_number = room_number
+        self.capacity = capacity
+        self.room_type = room_type
+        self.has_projector = bool(has_projector)
+    def get_number(self):
+        return self.room_number
+    def get_seating_capacity(self):
+        return self.capacity
+    def get_room_type(self):
+        return self.room_type
+    def get_has_projector(self):
+        return self.has_projector
+    def __str__(self):
+        return f"{self.room_number} ({self.room_type})"
 
 class Data:
-    meeting_times = [
+    def __init__(self, db_url):
+        self.engine = create_engine(db_url)
+        self.metadata = MetaData()
+        Base.metadata.create_all(self.engine)
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
+        self.TIMES = [
             ["MT1", ["Sunday", "Tuesday", "Thursday"], "08:00", "09:00"],
             ["MT2", ["Sunday", "Tuesday", "Thursday"], "09:00", "10:00"],
             ["MT3", ["Sunday", "Tuesday", "Thursday"], "10:00", "11:00"],
@@ -72,57 +178,28 @@ class Data:
             ["MT40", ["Sunday", "Thursday"], "10:00", "11:00"],
             ["MT41", ["Sunday", "Thursday"], "11:00", "12:00"],
             ["MT42", ["Sunday", "Thursday"], "12:00", "13:00"],
-            ["MT43", ["Sunday", "Thursday"], "13:00", "14:00"]
+            ["MT43", ["Sunday", "Thursday"], "13:00", "14:00"],
+            ["MT44", ["monday", "wednesday"], "08:00", "09:00"],
+            ["MT45", ["monday", "wednesday"], "09:00", "10:00"],
+            ["MT46", ["monday", "wednesday"], "10:00", "11:00"],
+            ["MT47", ["monday", "wednesday"], "11:00", "12:00"],
+            ["MT48", ["monday", "wednesday"], "12:00", "13:00"],
+            ["MT49", ["monday", "wednesday"], "13:00", "14:00"]
             ]
-    def __init__(self, db_url):
-        self.engine = create_engine(db_url)
-        self.metadata = MetaData()
-        self.metadata.create_all(self.engine)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
-
+        #self._MEETING_TIMES = []
+        self._rooms = self.get_rooms()  # قم بإضافة هذا السطر لتحديث _rooms
+        self._docents = self.get_docents()  # قم بإضافة هذا السطر لتحديث _docents
     def get_docents(self):
-        return self.session.query(Docent).all()
-    
+        return self.session.query(Docent).all()    
     def get_courses(self):
-        return self.session.query(Course).all()
-    
+        return self.session.query(Course).all()    
     def get_rooms(self):
-        return self.session.query(Room).all()
-   
-
+        return self.session.query(Room).all()    
+    def get_meeting_times(self):
+        return self.TIMES    
+    def get_ProfessorCoursesAssociation(self):
+        return self.session.query(ProfessorCourseAssociation).all()
     def close_session(self):
         self.session.close()
-
 # تحديث البيانات
 data = Data(db_url="postgresql://postgres:123456789@localhost:5432/DB")
-
-docents=data.get_docents()
-for docent in docents:
-    print(f"prof ID: {docent.id}, Name: {docent.name} , min_hours:{docent.min_hours}, number_of_hours:{docent.max_hours}")
-
-courses = data.get_courses()
-for course in courses:
-    print(f"Course ID: {course.code} Name: {course.name} , number_of_students:{course.number_of_students}, number_of_hours:{course.number_of_hours}, max_students_per_room:{course.max_students_per_room}, requires_projector:{course.requires_projector}")
-
-
-rooms=data.get_rooms()
-for room in rooms:
-    print(f"room_number:{room.room_number}, capacity:{room.capacity}, room_type:{room.room_type}, has_projector:{room.has_projector}")
-   
-    def get_docents(self):
-        return self._docents
-
-    def get_rooms(self):
-        return self._rooms
-
-    def get_courses(self):
-        return self._courses
-
-
-    
-
-
-
-# إغلاق الجلسة عند الانتهاء
-data.close_session()

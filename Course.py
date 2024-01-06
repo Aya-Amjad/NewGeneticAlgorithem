@@ -10,15 +10,19 @@ class Course:
 
     def get_number(self):
         return self._token
+    def get_docents(self):
+        return self._docents
 
     def get_max_students_per_room(self):
         return self._max_students_per_room
-
+    def get_token(self):
+        return self._token
     def get_name(self):
         return self._name
 
     def get_docents(self):
         return self._docents
+    
     def get_number_of_students(self):
         return self._number_of_students
 

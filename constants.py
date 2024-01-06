@@ -1,4 +1,4 @@
-MEETING_TIMES = [
+TIMES = [
             ["MT1", ["Sunday", "Tuesday", "Thursday"], "08:00", "09:00"],
             ["MT2", ["Sunday", "Tuesday", "Thursday"], "09:00", "10:00"],
             ["MT3", ["Sunday", "Tuesday", "Thursday"], "10:00", "11:00"],
@@ -40,5 +40,29 @@ MEETING_TIMES = [
             ["MT40", ["Sunday", "Thursday"], "10:00", "11:00"],
             ["MT41", ["Sunday", "Thursday"], "11:00", "12:00"],
             ["MT42", ["Sunday", "Thursday"], "12:00", "13:00"],
-            ["MT43", ["Sunday", "Thursday"], "13:00", "14:00"]
-            ] 
+            ["MT43", ["Sunday", "Thursday"], "13:00", "14:00"],
+            ["MT44", ["monday", "wednesday"], "08:00", "09:00"],
+            ["MT45", ["monday", "wednesday"], "09:00", "10:00"],
+            ["MT46", ["monday", "wednesday"], "10:00", "11:00"],
+            ["MT47", ["monday", "wednesday"], "11:00", "12:00"],
+            ["MT48", ["monday", "wednesday"], "12:00", "13:00"],
+            ["MT49", ["monday", "wednesday"], "13:00", "14:00"]
+            ]
+valid_day_combinations = {
+    0: [["Sunday"], ["Monday"], ["Tuesday"], ["Wednesday"], ["Thursday"]],
+    1: [["Sunday"], ["Monday"], ["Tuesday"], ["Wednesday"], ["Thursday"]],
+    2: [["Sunday", "Tuesday"], ["Sunday", "Thursday"], ["Tuesday", "Thursday"],["monday", "wednesday"]],
+    3: [["Sunday", "Tuesday", "Thursday"], ["Monday", "Wednesday"]],
+    4: [["Sunday", "Tuesday", "Thursday"], ["Monday", "Wednesday"]]
+}
+def get_id(meeting_time):
+    return meeting_time[0]
+
+def get_days(meeting_time):
+    return meeting_time[1]
+
+def get_start_time(meeting_time):
+    return meeting_time[2]
+
+def get_end_time(meeting_time):
+    return meeting_time[3]

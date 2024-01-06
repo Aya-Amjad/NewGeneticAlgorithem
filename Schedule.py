@@ -4,11 +4,14 @@ from Course import Course
 import math
 from Docent import Docent
 from Room import Room
+from constants import get_start_time, get_end_time, get_days,TIMES
 
 valid_day_combinations = {
+    0: [["Sunday"], ["Monday"], ["Tuesday"], ["Wednesday"], ["Thursday"]],
     1: [["Sunday"], ["Monday"], ["Tuesday"], ["Wednesday"], ["Thursday"]],
-    2: [["Sunday", "Tuesday"], ["Sunday", "Thursday"], ["Tuesday", "Thursday"]],
-    3: [["Sunday", "Tuesday", "Thursday"], ["Monday", "Wednesday"]]
+    2: [["Sunday", "Tuesday"], ["Sunday", "Thursday"], ["Tuesday", "Thursday"],["monday", "wednesday"]],
+    3: [["Sunday", "Tuesday", "Thursday"], ["Monday", "Wednesday"]],
+    4: [["Sunday", "Tuesday", "Thursday"], ["Monday", "Wednesday"]]
 }
 
 class Schedule:
@@ -42,20 +45,20 @@ class Schedule:
 
             for _ in range(num_sections):
                 days = rnd.choice(valid_day_combinations[course.get_number_of_hours()])
-                available_meeting_times = [mt for mt in self._data.get_meeting_times() if set(days) == set(mt.get_days())]
+                available_meeting_times = [mt for mt in TIMES if set(days) == set(mt[1])]
 
-                requires_projector = course.requires_projector()
+                requires_projector = course.get_requires_projector()
                 suitable_rooms = [room for room in rooms if room.get_seating_capacity() >= course.get_max_students_per_room()]
 
                 # Modify suitable_rooms based on the number of hours and projector requirement
-                if course.get_number_of_hours() == 1:
+                if course.get_number_of_hours() in [0, 1]:
                     if requires_projector:
-                        suitable_rooms = [room for room in suitable_rooms if room.get_room_type() == "عملي" and room.has_projector()]
+                        suitable_rooms = [room for room in suitable_rooms if room.get_room_type() == "عملي" and room.get_has_projector()]
                     else:
                         suitable_rooms = [room for room in suitable_rooms if room.get_room_type() == "عملي"]
                 else:
                     if requires_projector:
-                        suitable_rooms = [room for room in suitable_rooms if room.get_room_type() == "نظري" and room.has_projector()]
+                        suitable_rooms = [room for room in suitable_rooms if room.get_room_type() == "نظري" and room.get_has_projector()]
                     else:
                         suitable_rooms = [room for room in suitable_rooms if room.get_room_type() == "نظري"]
 
@@ -83,7 +86,7 @@ class Schedule:
 
                 # Sort the suitable docents based on the difference between their min and max hours
                 #suitable_docents.sort(key=lambda docent: docent.get_assigned_hours(), reverse=True)
-                courses.sort(key=lambda course: course.get_number_of_hours(), reverse=True)
+                #courses.sort(key=lambda course: course.get_number_of_hours(), reverse=True)
                 suitable_docents.sort(key=lambda docent: (-docent.get_assigned_hours(),docent.get_assigned_hours() < docent.get_min_hours(),-abs(docent.get_min_hours() - docent.get_assigned_hours())), reverse=True)
 
                 while available_meeting_times:
@@ -94,36 +97,62 @@ class Schedule:
                         new_lecture = Lecture(self._classNumb, course, meeting_time)
                         new_lecture.set_room(new_room)
 
-                        if suitable_docents: 
-                            new_lecture.set_docent(suitable_docents[0])
-                            suitable_docents[0].add_assigned_hours(course.get_number_of_hours())
-                            suitable_docents[0].add_assigned_course_hours(course.get_number_of_hours())
-                            # Remove the assigned docent from the list if their hours match
-                            if suitable_docents[0].get_min_hours() == suitable_docents[0].get_max_hours():
-                                suitable_docents.pop(0)
-                                '''
-                            elif suitable_docents[0].get_assigned_hours()==suitable_docents[0].get_max_hours():
-                                suitable_docents.pop(0)
-                                '''
-                        else:
-                            new_lecture.set_docent(Docent("NULL", "NULL", 0, 0))
+                        if not self.has_room_conflict(new_room, meeting_time, days):
+                            if suitable_docents:
+                                if suitable_docents[0].get_assigned_hours() + course.get_number_of_hours() <= suitable_docents[0].get_max_hours():
+                                    new_lecture.set_docent(suitable_docents[0])
+                                    suitable_docents[0].add_assigned_hours(course.get_number_of_hours())
+                                    suitable_docents[0].add_assigned_course_hours(course.get_number_of_hours())
+                                    # Remove the assigned docent from the list if their hours match
+                                    if suitable_docents[0].get_min_hours() == suitable_docents[0].get_max_hours():
+                                        suitable_docents.pop(0)
+                                else:
+                                    other_docents = [docent for docent in course.get_docents() if docent.is_available(None, course.get_number_of_hours()) and docent.get_assigned_hours() + course.get_number_of_hours() <= docent.get_max_hours()]
+    
+                                    if other_docents:
+                                        # Sort other docents based on the difference between their min and max hours
+                                        other_docents.sort(key=lambda docent: (-docent.get_assigned_hours(), docent.get_assigned_hours() < docent.get_min_hours(), -abs(docent.get_min_hours() - docent.get_assigned_hours())), reverse=True)
 
-                        self._lectures.append(new_lecture)
-                        self._classNumb += 1
-                        break
+                                        new_lecture.set_docent(other_docents[0])
+                                        other_docents[0].add_assigned_hours(course.get_number_of_hours())
+                                        other_docents[0].add_assigned_course_hours(course.get_number_of_hours())
+
+                                        # Remove the assigned docent from the list if their hours match
+                                        if other_docents[0].get_min_hours() == other_docents[0].get_max_hours():
+                                            other_docents.pop(0)
+                                    else:
+                                        new_lecture.set_docent(Docent("NULL", "NULL", 0, 0))
+                            else:
+                                new_lecture.set_docent(Docent("NULL", "NULL", 0, 0))
+
+                            self._lectures.append(new_lecture)
+                            self._classNumb += 1
+                            break
                     else:
+                        
                         available_meeting_times.remove(meeting_time)
 
         return self
 
+    def get_days(meeting_time):
+        return meeting_time[1]
+
+    def get_start_time(meeting_time):
+        return meeting_time[2]
+
+    def get_end_time(meeting_time):
+        return meeting_time[3]
+
+
     def has_room_conflict(self, room, meeting_time, days):
         for existing_lecture in self._lectures:
-            existing_time = existing_lecture.get_meeting_time().get_time()
-            existing_start, existing_end = map(str.strip, existing_time.split('–'))
+            existing_start = get_start_time(existing_lecture.get_meeting_time())
+            existing_end = get_end_time(existing_lecture.get_meeting_time())
 
-            meeting_start, meeting_end = map(str.strip, meeting_time.get_time().split('–'))
+            meeting_start = get_start_time(meeting_time)
+            meeting_end = get_end_time(meeting_time)
 
-            if (set(existing_lecture.get_meeting_time().get_days()) & set(days)) and \
+            if (set(get_days(existing_lecture.get_meeting_time())) & set(days)) and \
                     int(existing_end.split(':')[0]) > int(meeting_start.split(':')[0]) and \
                     int(existing_start.split(':')[0]) < int(meeting_end.split(':')[0]) and \
                     existing_lecture.get_room() == room:
